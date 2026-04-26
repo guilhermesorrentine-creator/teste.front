@@ -1,0 +1,221 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="description" content="Gerenciar alarmes de medicamentos - DeltaSaúde">
+    <title>Alarmes - DeltaSaúde</title>
+
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Nunito:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
+
+    <link rel="stylesheet" href="css/design-system.css">
+    <link rel="stylesheet" href="css/components.css">
+    <link rel="stylesheet" href="css/pages.css">
+
+    <script>
+        (function() {
+            const theme = localStorage.getItem('delta_theme');
+            if (theme === 'dark') {
+                document.documentElement.setAttribute('data-theme', 'dark');
+                document.documentElement.classList.add('dark');
+            }
+        })();
+    </script>
+</head>
+<body>
+    <div id="app"></div>
+
+    <script src="js/auth.js"></script>
+    <script src="js/api.js"></script>
+    <script src="js/components.js"></script>
+    <script src="js/theme.js"></script>
+
+    <script>
+        if (!AuthManager.protectPage()) {
+            // Redirecionou
+        } else {
+            const app = document.getElementById('app');
+            ComponentsManager.renderNavbar(app, { showSidebar: true, currentPage: 'alarmes' });
+
+            const pageContent = document.querySelector('.page-content');
+
+            pageContent.innerHTML = `
+                <div class="page-header">
+                    <div>
+                        <h1 class="page-title">Meus Alarmes</h1>
+                        <p class="page-subtitle">Confirme quando tomar seus medicamentos</p>
+                    </div>
+                </div>
+
+                <!-- Filtros -->
+                <div class="alarmes-filters">
+                    <button class="filter-btn active" data-filter="todos">
+                        <i class="fas fa-list"></i>
+                        Todos
+                    </button>
+                    <button class="filter-btn" data-filter="pendentes">
+                        <i class="fas fa-clock"></i>
+                        Pendentes
+                    </button>
+                    <button class="filter-btn" data-filter="confirmados">
+                        <i class="fas fa-check"></i>
+                        Confirmados
+                    </button>
+                </div>
+
+                <div id="alarmes-list">
+                    <div class="spinner-inline" style="justify-self: center;">
+                        <div class="spinner"></div>
+                        <span>Carregando alarmes...</span>
+                    </div>
+                </div>
+            `;
+
+            // Variáveis
+            let alarmes = [];
+            let filtroAtual = 'todos';
+
+            const listContainer = document.getElementById('alarmes-list');
+            const filterButtons = document.querySelectorAll('.filter-btn');
+
+            // Carrega alarmes
+            loadAlarmes();
+
+            async function loadAlarmes() {
+                try {
+                    const data = await ApiClient.listarAlarmes();
+                    // Flatten alarmes agrupados
+                    alarmes = [];
+                    if (Array.isArray(data)) {
+                        data.forEach(grupo => {
+                            if (grupo.alarmes && Array.isArray(grupo.alarmes)) {
+                                grupo.alarmes.forEach(a => {
+                                    alarmes.push({
+                                        ...a,
+                                        nomeTratamento: grupo.nomeTratamento
+                                    });
+                                });
+                            }
+                        });
+                    }
+                    // Ordena por data/hora
+                    alarmes.sort((a, b) => new Date(a.dataHora) - new Date(b.dataHora));
+                    renderAlarmes();
+                } catch (error) {
+                    listContainer.innerHTML = `
+                        <div class="empty-state">
+                            <p class="text-danger">Erro ao carregar alarmes.</p>
+                            <button class="btn btn-primary mt-lg" onclick="loadAlarmes()">Tentar novamente</button>
+                        </div>
+                    `;
+                }
+            }
+
+            function renderAlarmes() {
+                let lista = alarmes;
+
+                // Aplica filtro
+                if (filtroAtual === 'pendentes') {
+                    lista = alarmes.filter(a => !a.tomado);
+                } else if (filtroAtual === 'confirmados') {
+                    lista = alarmes.filter(a => a.tomado);
+                }
+
+                // Ordena: atrasados primeiro, depois pendentes, depois confirmados
+                lista.sort((a, b) => {
+                    const aAtrasado = ComponentsManager.isPast(a.dataHora) && !a.tomado;
+                    const bAtrasado = ComponentsManager.isPast(b.dataHora) && !b.tomado;
+                    if (aAtrasado && !bAtrasado) return -1;
+                    if (!aAtrasado && bAtrasado) return 1;
+                    return new Date(a.dataHora) - new Date(b.dataHora);
+                });
+
+                if (lista.length === 0) {
+                    listContainer.innerHTML = `
+                        <div class="empty-state">
+                            <div class="empty-state-icon">
+                                <i class="fas fa-bell-slash"></i>
+                            </div>
+                            <h3 class="empty-state-title">Nenhum alarme encontrado</h3>
+                            <p class="empty-state-description">
+                                ${filtroAtual === 'todos' ? 'Você não tem alarmes cadastrados.' :
+                                  filtroAtual === 'pendentes' ? 'Todos os alarmes foram confirmados!' :
+                                  'Nenhum alarme confirmado ainda.'}
+                            </p>
+                        </div>
+                    `;
+                    return;
+                }
+
+                listContainer.innerHTML = lista.map(alarme => {
+                    const horario = ComponentsManager.formatTime(alarme.dataHora);
+                    const data = ComponentsManager.formatDate(alarme.dataHora);
+                    const atrasado = ComponentsManager.isPast(alarme.dataHora) && !alarme.tomado;
+                    const statusClass = alarme.tomado ? 'confirmado' : (atrasado ? 'atrasado' : 'pendente');
+                    const statusText = alarme.tomado ? 'Confirmado' : (atrasado ? 'Atrasado' : 'Pendente');
+                    const statusIcon = alarme.tomado ? 'fa-check-circle' : (atrasado ? 'fa-exclamation-circle' : 'fa-clock');
+
+                    return `
+                        <div class="alarme-card ${statusClass}">
+                            <div class="alarme-card-icon">
+                                <i class="fas ${alarme.tomado ? 'fa-check' : 'fa-bell'}"></i>
+                            </div>
+                            <div class="alarme-card-content">
+                                <div class="alarme-card-title">${alarme.nomeTratamento || 'Alarme #' + alarme.alarmeId}</div>
+                                <div class="alarme-card-time">${horario}</div>
+                                <div class="alarme-card-date">${data}</div>
+                            </div>
+                            <div class="alarme-card-status">
+                                <i class="fas ${statusIcon}"></i>
+                                ${statusText}
+                            </div>
+                            ${!alarme.tomado ? `
+                                <button class="btn btn-success" onclick="confirmarAlarme(${alarme.alarmeId})">
+                                    <i class="fas fa-check"></i>
+                                    Confirmar
+                                </button>
+                            ` : ''}
+                        </div>
+                    `;
+                }).join('');
+            }
+
+            // Filtros
+            filterButtons.forEach(btn => {
+                btn.addEventListener('click', function() {
+                    filterButtons.forEach(b => b.classList.remove('active'));
+                    this.classList.add('active');
+                    filtroAtual = this.dataset.filter;
+                    renderAlarmes();
+                });
+            });
+
+            // Confirmar alarme
+            window.confirmarAlarme = async function(id) {
+                ComponentsManager.showConfirmModal({
+                    title: 'Confirmar tomada?',
+                    message: 'Você confirma que tomou este medicamento agora?',
+                    confirmText: 'Sim, tomei',
+                    cancelText: 'Não',
+                    type: 'warning',
+                    onConfirm: async () => {
+                        try {
+                            await ApiClient.confirmarAlarme(id);
+                            ComponentsManager.success('Medicamento confirmado!');
+                            loadAlarmes();
+                        } catch (error) {
+                            ComponentsManager.error(error.message || 'Não foi possível confirmar o alarme.');
+                        }
+                    }
+                });
+            };
+
+            // Auto-refresh a cada 60 segundos
+            setInterval(loadAlarmes, 60000);
+        }
+    </script>
+</body>
+</html>

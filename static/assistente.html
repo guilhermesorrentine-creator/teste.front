@@ -1,0 +1,257 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="description" content="Assistente de saúde com IA - DeltaSaúde">
+    <title>Assistente - DeltaSaúde</title>
+
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Nunito:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
+
+    <link rel="stylesheet" href="css/design-system.css">
+    <link rel="stylesheet" href="css/components.css">
+    <link rel="stylesheet" href="css/pages.css">
+
+    <script>
+        (function() {
+            const theme = localStorage.getItem('delta_theme');
+            if (theme === 'dark') {
+                document.documentElement.setAttribute('data-theme', 'dark');
+                document.documentElement.classList.add('dark');
+            }
+        })();
+    </script>
+</head>
+<body>
+    <div id="app"></div>
+
+    <script src="js/auth.js"></script>
+    <script src="js/api.js"></script>
+    <script src="js/components.js"></script>
+    <script src="js/theme.js"></script>
+
+    <script>
+        if (!AuthManager.protectPage()) {
+            // Redirecionou
+        } else {
+            const app = document.getElementById('app');
+            ComponentsManager.renderNavbar(app, { showSidebar: true, currentPage: 'assistente' });
+
+            const pageContent = document.querySelector('.page-content');
+
+            pageContent.innerHTML = `
+                <div class="page-header">
+                    <div>
+                        <h1 class="page-title">Assistente de Saúde</h1>
+                        <p class="page-subtitle">Tire suas dúvidas sobre medicamentos e tratamentos</p>
+                    </div>
+                </div>
+
+                <div class="assistente-container">
+                    <div class="chat-container" id="chat-container">
+                        <!-- Mensagens serão inseridas aqui -->
+                    </div>
+
+                    <!-- Sugestões rápidas -->
+                    <div class="suggestions" id="suggestions">
+                        <button class="suggestion-chip" data-question="Qual meu próximo remédio?">
+                            <i class="fas fa-pills"></i>
+                            Qual meu próximo remédio?
+                        </button>
+                        <button class="suggestion-chip" data-question="Quais tratamentos tenho ativos?">
+                            <i class="fas fa-clipboard-list"></i>
+                            Tratamentos ativos
+                        </button>
+                        <button class="suggestion-chip" data-question="Tenho alarmes pendentes?">
+                            <i class="fas fa-bell"></i>
+                            Alarmes pendentes
+                        </button>
+                        <button class="suggestion-chip" data-question="Como está meu estoque?">
+                            <i class="fas fa-boxes"></i>
+                            Meu estoque
+                        </button>
+                    </div>
+
+                    <!-- Input de chat -->
+                    <div class="chat-input-container">
+                        <textarea
+                            id="chat-input"
+                            class="chat-input"
+                            placeholder="Digite sua pergunta..."
+                            rows="1"
+                        ></textarea>
+                        <button class="btn btn-primary" id="btn-enviar" style="min-width: 100px;">
+                            <i class="fas fa-paper-plane"></i>
+                            Enviar
+                        </button>
+                    </div>
+                </div>
+            `;
+
+            const chatContainer = document.getElementById('chat-container');
+            const chatInput = document.getElementById('chat-input');
+            const btnEnviar = document.getElementById('btn-enviar');
+            const suggestionsContainer = document.getElementById('suggestions');
+
+            // Histórico de conversa
+            let historico = JSON.parse(localStorage.getItem('delta_chat_history') || '[]');
+
+            // Verifica se há pergunta na URL
+            const urlParams = new URLSearchParams(window.location.search);
+            const perguntaInicial = urlParams.get('pergunta');
+
+            // Renderiza histórico
+            function renderHistorico() {
+                chatContainer.innerHTML = '';
+                historico.forEach(msg => {
+                    addMensagem(msg.tipo, msg.texto, false);
+                });
+                scrollToBottom();
+            }
+
+            // Adiciona mensagem ao chat
+            function addMensagem(tipo, texto, salvar = true) {
+                const msgDiv = document.createElement('div');
+                msgDiv.className = `chat-message ${tipo}`;
+
+                const avatar = tipo === 'user' ?
+                    ComponentsManager.getInitials(AuthManager.getUserData()?.nome || 'U') :
+                    '🤖';
+
+                const now = new Date();
+                const hora = now.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' });
+
+                msgDiv.innerHTML = `
+                    <div class="chat-avatar">${avatar}</div>
+                    <div>
+                        <div class="chat-bubble">${texto.replace(/\n/g, '<br>')}</div>
+                        <div class="chat-time">${hora}</div>
+                    </div>
+                `;
+
+                chatContainer.appendChild(msgDiv);
+
+                if (salvar) {
+                    historico.push({ tipo, texto });
+                    localStorage.setItem('delta_chat_history', JSON.stringify(historico.slice(-50))); // Mantém últimas 50
+                }
+            }
+
+            // Scroll para baixo
+            function scrollToBottom() {
+                chatContainer.scrollTop = chatContainer.scrollHeight;
+            }
+
+            // Mostra indicador de digitação
+            function showTyping() {
+                const typingDiv = document.createElement('div');
+                typingDiv.className = 'typing-indicator';
+                typingDiv.id = 'typing-indicator';
+                typingDiv.innerHTML = `
+                    <div class="dots">
+                        <span class="dot"></span>
+                        <span class="dot"></span>
+                        <span class="dot"></span>
+                    </div>
+                    <span>Assistente digitando...</span>
+                `;
+                chatContainer.appendChild(typingDiv);
+                scrollToBottom();
+            }
+
+            function hideTyping() {
+                const typing = document.getElementById('typing-indicator');
+                if (typing) typing.remove();
+            }
+
+            // Envia pergunta
+            async function enviarPergunta(pergunta) {
+                if (!pergunta.trim()) return;
+
+                // Esconde sugestões após primeira pergunta
+                suggestionsContainer.style.display = 'none';
+
+                addMensagem('user', pergunta);
+                chatInput.value = '';
+                chatInput.focus();
+
+                showTyping();
+
+                try {
+                    const response = await ApiClient.perguntarAssistente(pergunta);
+                    hideTyping();
+                    addMensagem('assistant', response.resposta || 'Não consegui processar sua pergunta.');
+                } catch (error) {
+                    hideTyping();
+                    addMensagem('assistant', 'Desculpe, não consegui processar sua pergunta. Por favor, tente novamente.');
+                }
+
+                scrollToBottom();
+            }
+
+            // Eventos
+            btnEnviar.addEventListener('click', () => {
+                enviarPergunta(chatInput.value);
+            });
+
+            chatInput.addEventListener('keydown', (e) => {
+                if (e.key === 'Enter' && !e.shiftKey) {
+                    e.preventDefault();
+                    enviarPergunta(chatInput.value);
+                }
+            });
+
+            // Sugestões
+            document.querySelectorAll('.suggestion-chip').forEach(chip => {
+                chip.addEventListener('click', function() {
+                    const question = this.dataset.question;
+                    enviarPergunta(question);
+                });
+            });
+
+            // Botão limpar conversa
+            const clearBtn = document.createElement('button');
+            clearBtn.className = 'btn btn-ghost btn-sm';
+            clearBtn.innerHTML = '<i class="fas fa-trash"></i> Limpar';
+            clearBtn.style.position = 'absolute';
+            clearBtn.style.top = '10px';
+            clearBtn.style.right = '10px';
+            clearBtn.addEventListener('click', () => {
+                ComponentsManager.showConfirmModal({
+                    title: 'Limpar conversa?',
+                    message: 'Todo o histórico desta conversa será apagado.',
+                    confirmText: 'Sim, limpar',
+                    cancelText: 'Não, cancelar',
+                    type: 'warning',
+                    onConfirm: () => {
+                        historico = [];
+                        localStorage.removeItem('delta_chat_history');
+                        renderHistorico();
+                        suggestionsContainer.style.display = 'flex';
+                        // Mensagem inicial
+                        addMensagem('assistant', 'Olá! Sou seu assistente de saúde. Como posso ajudar você hoje?');
+                    }
+                });
+            });
+            pageContent.querySelector('.assistente-container').style.position = 'relative';
+            pageContent.querySelector('.assistente-container').appendChild(clearBtn);
+
+            // Inicializa
+            renderHistorico();
+
+            // Se não há histórico, mostra mensagem de boas-vindas
+            if (historico.length === 0) {
+                addMensagem('assistant', 'Olá! Sou seu assistente de saúde. Como posso ajudar você hoje?');
+            }
+
+            // Se há pergunta na URL, envia
+            if (perguntaInicial) {
+                setTimeout(() => enviarPergunta(perguntaInicial), 500);
+            }
+        }
+    </script>
+</body>
+</html>

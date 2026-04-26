@@ -1,0 +1,162 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="description" content="Painel principal - DeltaSaúde">
+    <meta name="theme-color" content="#3B5BDB">
+    <title>Início - DeltaSaúde</title>
+
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
+
+    <link rel="stylesheet" href="css/design-system.css">
+    <link rel="stylesheet" href="css/components.css">
+    <link rel="stylesheet" href="css/pages.css">
+
+    <script>
+        (function() {
+            const theme = localStorage.getItem('delta_theme');
+            if (theme === 'dark') {
+                document.documentElement.setAttribute('data-theme', 'dark');
+                document.documentElement.classList.add('dark');
+            }
+        })();
+    </script>
+</head>
+<body>
+    <div id="app"></div>
+
+    <script src="js/auth.js"></script>
+    <script src="js/api.js"></script>
+    <script src="js/components.js"></script>
+    <script src="js/theme.js"></script>
+
+    <script>
+        // Protege a página
+        if (!AuthManager.protectPage()) {
+            // Redirecionou para login
+        } else {
+            const app = document.getElementById('app');
+
+            // Renderiza layout com navbar
+            ComponentsManager.renderNavbar(app, { showSidebar: true, currentPage: 'dashboard' });
+
+            const pageContent = document.querySelector('.page-content');
+
+            // Saudações motivacionais
+            const saudacoes = [
+                'Cuide bem da sua saúde! 💚',
+                'Cada dose conta! 💊',
+                'Sua saúde em primeiro lugar! 🌟',
+                'Continue cuidando de você! ❤️',
+                'Parabéns por cuidar da sua saúde! 👏'
+            ];
+
+            const saudacaoAleatoria = saudacoes[Math.floor(Math.random() * saudacoes.length)];
+
+            // Obtém dados do usuário
+            const userData = AuthManager.getUserData() || {};
+            const userName = userData.nome || 'Usuário';
+            const primeiroNome = userName.split(' ')[0];
+
+            // Data e hora atual
+            const agora = new Date();
+            const dataFormatada = agora.toLocaleDateString('pt-BR', {
+                weekday: 'long',
+                day: 'numeric',
+                month: 'long'
+            });
+            const horaFormatada = agora.toLocaleTimeString('pt-BR', {
+                hour: '2-digit',
+                minute: '2-digit'
+            });
+
+            pageContent.innerHTML = `
+                <div class="page-header">
+                    <div>
+                        <h1 class="page-title">Olá, ${primeiroNome}! 👋</h1>
+                        <p class="page-subtitle">${dataFormatada} às ${horaFormatada}</p>
+                    </div>
+                </div>
+
+            const containerGrid = document.createElement('div');
+            containerGrid.className = 'nav-cards-container';
+            containerGrid.style.width = '100%';
+            pageContent.appendChild(containerGrid);
+
+            async function initDashboard() {
+                if (userData.role === 'MEDICO') {
+                    NavigationCards.renderMedico(containerGrid);
+                    
+                    try {
+                        const relatorio = await ApiClient.medicoRelatorioAdesao();
+                        const adesaoContainer = document.createElement('div');
+                        adesaoContainer.style.marginTop = 'var(--space-8)';
+                        adesaoContainer.innerHTML = '<h3 class="card-title" style="margin-bottom: var(--space-4);">Resumo de Adesão dos Pacientes</h3><div id="adesao-list"></div>';
+                        pageContent.appendChild(adesaoContainer);
+                        
+                        const listDiv = adesaoContainer.querySelector('#adesao-list');
+                        if (!relatorio || relatorio.length === 0) {
+                            listDiv.innerHTML = '<p class="text-muted" style="padding: 16px; background: var(--bg-surface); border-radius: var(--radius-md); border: 1px solid var(--border-subtle);">Nenhum dado de adesão disponível.</p>';
+                        } else {
+                            listDiv.innerHTML = relatorio.map(p => {
+                                const pAdesao = p.percentualAdesao || 0;
+                                let classeCor = pAdesao >= 80 ? 'otimo' : (pAdesao >= 60 ? 'bom' : (pAdesao >= 40 ? 'regular' : 'ruim'));
+                                return `
+                                <div class="paciente-card">
+                                    <div class="avatar avatar-md">${ComponentsManager.getInitials(p.pacienteNome || 'P')}</div>
+                                    <div class="paciente-info">
+                                        <div class="paciente-nome">${p.pacienteNome}</div>
+                                        <div class="paciente-email">Média de adesão: <strong>${pAdesao.toFixed(1)}%</strong> (${p.totalDiasRegistrados} dias registrados)</div>
+                                        <div class="adesao-progress">
+                                            <div class="adesao-progress-bar ${classeCor}" style="width: ${pAdesao}%"></div>
+                                        </div>
+                                    </div>
+                                    <div class="paciente-actions">
+                                        <span class="badge badge-primary" style="font-size: 10px;">${classeCor.toUpperCase()}</span>
+                                    </div>
+                                </div>`;
+                            }).join('');
+                        }
+                    } catch (e) {
+                        console.error('Erro ao carregar relatorio adesao', e);
+                    }
+                } else {
+                    let modo = 'PADRAO';
+                    try {
+                        const resp = await fetch(ApiClient.BASE_URL + '/api/v1/acessibilidade', {
+                            headers: AuthManager.getAuthHeader()
+                        });
+                        if (resp.ok) {
+                            const data = await resp.json();
+                            modo = data.modo;
+                            AcessibilidadeManager.init(); // Garante que as config visuais sejam aplicadas
+                        }
+                    } catch (e) {}
+                    NavigationCards.renderPaciente(containerGrid, modo);
+
+                    try {
+                        const adesaoData = await ApiClient.getCalendarioAdesao(1);
+                        const adesaoContainer = document.createElement('div');
+                        adesaoContainer.style.marginTop = 'var(--space-8)';
+                        adesaoContainer.innerHTML = '<h3 class="card-title" style="margin-bottom: var(--space-4);">Seu Histórico de Adesão</h3>';
+                        
+                        const calDiv = document.createElement('div');
+                        adesaoContainer.appendChild(calDiv);
+                        pageContent.appendChild(adesaoContainer);
+                        
+                        AdesaoCalendar.render(calDiv, adesaoData);
+                    } catch (e) {
+                        console.error('Erro ao carregar calendario adesao', e);
+                    }
+                }
+            }
+
+            initDashboard();
+        }
+    </script>
+</body>
+</html>

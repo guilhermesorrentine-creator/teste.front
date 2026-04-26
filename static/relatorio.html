@@ -1,0 +1,295 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="description" content="Gerar relatório de saúde - DeltaSaúde">
+    <title>Relatório - DeltaSaúde</title>
+
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Nunito:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
+
+    <link rel="stylesheet" href="css/design-system.css">
+    <link rel="stylesheet" href="css/components.css">
+    <link rel="stylesheet" href="css/pages.css">
+
+    <script>
+        (function() {
+            const theme = localStorage.getItem('delta_theme');
+            if (theme === 'dark') {
+                document.documentElement.setAttribute('data-theme', 'dark');
+                document.documentElement.classList.add('dark');
+            }
+        })();
+    </script>
+</head>
+<body>
+    <div id="app"></div>
+
+    <script src="js/auth.js"></script>
+    <script src="js/api.js"></script>
+    <script src="js/components.js"></script>
+    <script src="js/theme.js"></script>
+
+    <!-- jsPDF via CDN -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+
+    <script>
+        if (!AuthManager.protectPage()) {
+            // Redirecionou
+        } else {
+            const app = document.getElementById('app');
+            ComponentsManager.renderNavbar(app, { showSidebar: true, currentPage: 'relatorio' });
+
+            const pageContent = document.querySelector('.page-content');
+
+            pageContent.innerHTML = `
+                <div class="page-header">
+                    <div>
+                        <h1 class="page-title">Relatório de Saúde</h1>
+                        <p class="page-subtitle">Exporte um resumo completo dos seus dados</p>
+                    </div>
+                </div>
+
+                <div class="relatorio-container">
+                    <div class="card relatorio-card">
+                        <div class="relatorio-icon">
+                            <i class="fas fa-file-pdf"></i>
+                        </div>
+                        <h2 style="font-size: var(--font-xl); margin-bottom: var(--spacing-sm);">
+                            Gerar Relatório em PDF
+                        </h2>
+                        <p class="text-secondary" style="margin-bottom: var(--spacing-xl);">
+                            Baixe um documento PDF completo com seus medicamentos, tratamentos e histórico de alarmes.
+                        </p>
+
+                        <div class="relatorio-options" id="opcoes-relatorio">
+                            <label class="form-check relatorio-option">
+                                <input type="checkbox" id="opt-medicamentos" checked>
+                                <span class="form-check-label">
+                                    <i class="fas fa-pills" style="margin-right: 8px;"></i>
+                                    Medicamentos e estoque
+                                </span>
+                            </label>
+                            <label class="form-check relatorio-option">
+                                <input type="checkbox" id="opt-tratamentos" checked>
+                                <span class="form-check-label">
+                                    <i class="fas fa-clipboard-list" style="margin-right: 8px;"></i>
+                                    Tratamentos ativos
+                                </span>
+                            </label>
+                            <label class="form-check relatorio-option">
+                                <input type="checkbox" id="opt-alarmes" checked>
+                                <span class="form-check-label">
+                                    <i class="fas fa-bell" style="margin-right: 8px;"></i>
+                                    Histórico de alarmes
+                                </span>
+                            </label>
+                            <label class="form-check relatorio-option">
+                                <input type="checkbox" id="opt-pendentes" checked>
+                                <span class="form-check-label">
+                                    <i class="fas fa-clock" style="margin-right: 8px;"></i>
+                                    Alarmes pendentes
+                                </span>
+                            </label>
+                        </div>
+
+                        <button class="btn btn-primary btn-lg" id="btn-gerar">
+                            <i class="fas fa-download"></i>
+                            Baixar PDF
+                        </button>
+                    </div>
+                </div>
+
+                <!-- Preview do relatório (para impressão) -->
+                <div id="relatorio-preview" style="display: none;">
+                    <!-- Conteúdo para exportar -->
+                </div>
+            `;
+
+            const btnGerar = document.getElementById('btn-gerar');
+            const optMedicamentos = document.getElementById('opt-medicamentos');
+            const optTratamentos = document.getElementById('opt-tratamentos');
+            const optAlarmes = document.getElementById('opt-alarmes');
+            const optPendentes = document.getElementById('opt-pendentes');
+
+            btnGerar.addEventListener('click', async function() {
+                const incluirMedicamentos = optMedicamentos.checked;
+                const incluirTratamentos = optTratamentos.checked;
+                const incluirAlarmes = optAlarmes.checked;
+                const incluirPendentes = optPendentes.checked;
+
+                if (!incluirMedicamentos && !incluirTratamentos && !incluirAlarmes && !incluirPendentes) {
+                    ComponentsManager.warning('Selecione pelo menos uma opção para o relatório.');
+                    return;
+                }
+
+                btnGerar.disabled = true;
+                btnGerar.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Gerando relatório...';
+
+                try {
+                    const dados = await carregarDados();
+                    gerarPDF(dados, {
+                        medicamentos: incluirMedicamentos,
+                        tratamentos: incluirTratamentos,
+                        alarmes: incluirAlarmes,
+                        pendentes: incluirPendentes
+                    });
+                    ComponentsManager.success('Relatório gerado com sucesso!');
+                } catch (error) {
+                    ComponentsManager.error('Não foi possível gerar o relatório.');
+                } finally {
+                    btnGerar.disabled = false;
+                    btnGerar.innerHTML = '<i class="fas fa-download"></i> Baixar PDF';
+                }
+            });
+
+            async function carregarDados() {
+                const [medicamentos, tratamentos, alarmes, pendentes] = await Promise.all([
+                    ApiClient.listarMedicamentos(),
+                    ApiClient.listarTratamentos(),
+                    ApiClient.listarAlarmes(),
+                    ApiClient.listarAlarmesPendentes()
+                ]);
+
+                return { medicamentos, tratamentos, alarmes, pendentes };
+            }
+
+            function gerarPDF(dados, opcoes) {
+                const { jsPDF } = window.jspdf;
+                const doc = new jsPDF();
+
+                const user = AuthManager.getUserData() || {};
+                const nomeUsuario = user.nome || 'Usuário';
+                const dataAtual = new Date().toLocaleDateString('pt-BR');
+
+                let y = 20;
+                const pageHeight = doc.internal.pageSize.height;
+                const margin = 20;
+                const lineHeight = 7;
+
+                function addLine(text, isBold = false) {
+                    if (y > pageHeight - 30) {
+                        doc.addPage();
+                        y = 20;
+                    }
+                    doc.setFontSize(12);
+                    if (isBold) {
+                        doc.setFont('helvetica', 'bold');
+                    } else {
+                        doc.setFont('helvetica', 'normal');
+                    }
+                    doc.text(text, margin, y);
+                    y += lineHeight;
+                }
+
+                function addTitle(text) {
+                    y += 5;
+                    doc.setFontSize(16);
+                    doc.setFont('helvetica', 'bold');
+                    doc.setTextColor(46, 125, 107); // Cor primary
+                    doc.text(text, margin, y);
+                    doc.setTextColor(0, 0, 0);
+                    y += lineHeight + 3;
+                }
+
+                function addSection(text) {
+                    y += 5;
+                    doc.setFontSize(14);
+                    doc.setFont('helvetica', 'bold');
+                    doc.text(text, margin, y);
+                    y += lineHeight + 2;
+                }
+
+                // Cabeçalho
+                doc.setFontSize(20);
+                doc.setFont('helvetica', 'bold');
+                doc.setTextColor(46, 125, 107);
+                doc.text('DeltaSaúde - Relatório de Saúde', margin, y);
+                y += 10;
+
+                doc.setFontSize(12);
+                doc.setFont('helvetica', 'normal');
+                doc.setTextColor(0, 0, 0);
+                doc.text(`Paciente: ${nomeUsuario}`, margin, y);
+                y += lineHeight;
+                doc.text(`Data: ${dataAtual}`, margin, y);
+                y += 10;
+
+                // Medicamentos
+                if (opcoes.medicamentos && dados.medicamentos.length > 0) {
+                    addTitle('Medicamentos');
+
+                    dados.medicamentos.forEach(med => {
+                        const statusEstoque = med.atual <= med.critico ? 'CRÍTICO' : (med.atual <= med.critico * 1.5 ? 'BAIXO' : 'OK');
+                        addLine(`${med.nome} - ${med.dosagem}mg`, true);
+                        addLine(`  Estoque: ${med.atual} | Mínimo: ${med.critico} | Status: ${statusEstoque}`);
+                        y += 3;
+                    });
+                }
+
+                // Tratamentos
+                if (opcoes.tratamentos && dados.tratamentos.length > 0) {
+                    addTitle('Tratamentos');
+
+                    dados.tratamentos.forEach(trat => {
+                        addLine(`${trat.nome}`, true);
+                        addLine(`  Início: ${ComponentsManager.formatDate(trat.dataInicio)} | Duração: ${trat.duracaoDia} dias`);
+                        addLine(`  Intervalo: ${trat.intervaloHora}h | Dose diária: ${trat.doseDiaria}`);
+                        if (trat.nomeMedicamento) {
+                            addLine(`  Medicamento: ${trat.nomeMedicamento}`);
+                        }
+                        y += 3;
+                    });
+                }
+
+                // Alarmes
+                if (opcoes.alarmes || opcoes.pendentes) {
+                    addTitle('Alarmes');
+
+                    // Flatten alarmes
+                    let todosAlarmes = [];
+                    if (dados.alarmes) {
+                        dados.alarmes.forEach(grupo => {
+                            if (grupo.alarmes) {
+                                grupo.alarmes.forEach(a => {
+                                    todosAlarmes.push({ ...a, nomeTratamento: grupo.nomeTratamento });
+                                });
+                            }
+                        });
+                    }
+
+                    if (opcoes.pendentes && dados.pendentes) {
+                        addSection('Pendentes');
+                        dados.pendentes.slice(0, 10).forEach(a => {
+                            addLine(`  ${ComponentsManager.formatDateTime(a.dataHora)} - Status: Pendente`);
+                        });
+                        if (dados.pendentes.length > 10) {
+                            addLine(`  ... e mais ${dados.pendentes.length - 10} alarmes`);
+                        }
+                    }
+
+                    if (opcoes.alarmes) {
+                        addSection('Histórico (últimos 20)');
+                        const confirmados = todosAlarmes.filter(a => a.tomado).slice(0, 20);
+                        confirmados.forEach(a => {
+                            addLine(`  ${ComponentsManager.formatDateTime(a.dataHora)} - ${a.nomeTratamento || 'Alarme'} - Confirmado`);
+                        });
+                    }
+                }
+
+                // Rodapé
+                y += 10;
+                doc.setFontSize(10);
+                doc.setTextColor(128, 128, 128);
+                doc.text('Gerado por DeltaSaúde - Sistema de Gerenciamento de Medicamentos', margin, y);
+
+                // Download
+                doc.save(`DeltaSaude_Relatorio_${new Date().toISOString().split('T')[0]}.pdf`);
+            }
+        }
+    </script>
+</body>
+</html>

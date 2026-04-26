@@ -1,0 +1,251 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="description" content="Meu perfil - DeltaSaúde">
+    <title>Meu Perfil - DeltaSaúde</title>
+
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Nunito:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
+
+    <link rel="stylesheet" href="css/design-system.css">
+    <link rel="stylesheet" href="css/components.css">
+    <link rel="stylesheet" href="css/pages.css">
+
+    <script>
+        (function() {
+            const theme = localStorage.getItem('delta_theme');
+            if (theme === 'dark') {
+                document.documentElement.setAttribute('data-theme', 'dark');
+                document.documentElement.classList.add('dark');
+            }
+        })();
+    </script>
+</head>
+<body>
+    <div id="app"></div>
+
+    <script src="js/auth.js"></script>
+    <script src="js/api.js"></script>
+    <script src="js/components.js"></script>
+    <script src="js/theme.js"></script>
+
+    <script>
+        if (!AuthManager.protectPage()) {
+            // Redirecionou
+        } else {
+            const app = document.getElementById('app');
+            ComponentsManager.renderNavbar(app, { showSidebar: true, currentPage: 'perfil' });
+
+            const pageContent = document.querySelector('.page-content');
+            const user = AuthManager.getUserData() || AuthManager.getLoggedUser() || {};
+            const nomeUsuario = user.nome || user.email?.split('@')[0] || 'Usuário';
+            const emailUsuario = user.email || 'email@example.com';
+            const iniciais = ComponentsManager.getInitials(nomeUsuario);
+
+            pageContent.innerHTML = `
+                <div class="page-header">
+                    <div>
+                        <h1 class="page-title">Meu Perfil</h1>
+                        <p class="page-subtitle">Gerencie suas informações</p>
+                    </div>
+                </div>
+
+                <div class="perfil-container">
+                    <!-- Card do Usuário -->
+                    <div class="perfil-header">
+                        <div class="perfil-avatar">
+                            <span>${iniciais}</span>
+                        </div>
+                        <h2 class="perfil-nome">${nomeUsuario}</h2>
+                        <p class="perfil-email">${emailUsuario}</p>
+                    </div>
+
+                    <!-- Informações da Conta -->
+                    <div class="perfil-section">
+                        <h3 class="perfil-section-title">
+                            <i class="fas fa-user-circle"></i>
+                            Informações da Conta
+                        </h3>
+
+                        <div class="form-group">
+                            <label class="form-label">Nome completo</label>
+                            <input type="text" class="form-input" id="perfil-nome" value="${nomeUsuario}" readonly>
+                        </div>
+
+                        <div class="form-group">
+                            <label class="form-label">E-mail</label>
+                            <input type="email" class="form-input" id="perfil-email" value="${emailUsuario}" readonly>
+                            <p class="text-muted" style="font-size: var(--font-sm); margin-top: 8px;">
+                                O e-mail não pode ser alterado.
+                            </p>
+                        </div>
+
+                        <div class="form-group">
+                            <label class="form-label">Tipo de conta</label>
+                            <input type="text" class="form-input" value="${user.role === 'ADMIN' ? 'Administrador' : 'Usuário'}" readonly>
+                        </div>
+                    </div>
+
+                    <!-- Preferências -->
+                    <div class="perfil-section">
+                        <h3 class="perfil-section-title">
+                            <i class="fas fa-cog"></i>
+                            Preferências
+                        </h3>
+
+                        <div class="form-group">
+                            <label class="form-label">Tema da interface</label>
+                            <div style="display: flex; gap: 12px; margin-top: 8px;">
+                                <button class="btn btn-secondary" id="btn-theme-light" style="flex: 1;">
+                                    <i class="fas fa-sun"></i>
+                                    Modo claro
+                                </button>
+                                <button class="btn btn-secondary" id="btn-theme-dark" style="flex: 1;">
+                                    <i class="fas fa-moon"></i>
+                                    Modo escuro
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Estatísticas -->
+                    <div class="perfil-section">
+                        <h3 class="perfil-section-title">
+                            <i class="fas fa-chart-bar"></i>
+                            Resumo
+                        </h3>
+
+                        <div class="grid grid-cols-2">
+                            <div class="stat-card" id="stat-medicamentos">
+                                <div class="stat-icon primary">
+                                    <i class="fas fa-pills"></i>
+                                </div>
+                                <div>
+                                    <div class="stat-value" id="count-medicamentos">-</div>
+                                    <div class="stat-label">Medicamentos</div>
+                                </div>
+                            </div>
+                            <div class="stat-card" id="stat-tratamentos">
+                                <div class="stat-icon accent">
+                                    <i class="fas fa-clipboard-list"></i>
+                                </div>
+                                <div>
+                                    <div class="stat-value" id="count-tratamentos">-</div>
+                                    <div class="stat-label">Tratamentos</div>
+                                </div>
+                            </div>
+                            <div class="stat-card" id="stat-alarmes">
+                                <div class="stat-icon secondary">
+                                    <i class="fas fa-bell"></i>
+                                </div>
+                                <div>
+                                    <div class="stat-value" id="count-alarmes">-</div>
+                                    <div class="stat-label">Alarmes pendentes</div>
+                                </div>
+                            </div>
+                            <div class="stat-card" id="stat-confirmados">
+                                <div class="stat-icon success">
+                                    <i class="fas fa-check-circle"></i>
+                                </div>
+                                <div>
+                                    <div class="stat-value" id="count-confirmados">-</div>
+                                    <div class="stat-label">Confirmados</div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Ações -->
+                    <div class="perfil-section">
+                        <h3 class="perfil-section-title">
+                            <i class="fas fa-shield-alt"></i>
+                            Ações
+                        </h3>
+
+                        <button class="btn btn-danger btn-block" id="btn-sair" style="margin-top: 16px;">
+                            <i class="fas fa-sign-out-alt"></i>
+                            Sair da conta
+                        </button>
+                    </div>
+                </div>
+            `;
+
+            // Carrega estatísticas
+            loadStats();
+
+            async function loadStats() {
+                try {
+                    const [medicamentos, tratamentos, pendentes, todosAlarmes] = await Promise.all([
+                        ApiClient.listarMedicamentos(),
+                        ApiClient.listarTratamentos(),
+                        ApiClient.listarAlarmesPendentes(),
+                        ApiClient.listarAlarmes()
+                    ]);
+
+                    document.getElementById('count-medicamentos').textContent = medicamentos.length || 0;
+                    document.getElementById('count-tratamentos').textContent = tratamentos.length || 0;
+                    document.getElementById('count-alarmes').textContent = pendentes.length || 0;
+
+                    // Conta confirmados
+                    let confirmados = 0;
+                    if (todosAlarmes) {
+                        todosAlarmes.forEach(grupo => {
+                            if (grupo.alarmes) {
+                                confirmados += grupo.alarmes.filter(a => a.tomado).length;
+                            }
+                        });
+                    }
+                    document.getElementById('count-confirmados').textContent = confirmados;
+
+                } catch (error) {
+                    console.error('Erro ao carregar estatísticas:', error);
+                }
+            }
+
+            // Botões de tema
+            document.getElementById('btn-theme-light').addEventListener('click', function() {
+                ThemeManager.toggle();
+                if (ThemeManager.isDark()) {
+                    ThemeManager.toggle();
+                }
+                ComponentsManager.success('Modo claro ativado!');
+            });
+
+            document.getElementById('btn-theme-dark').addEventListener('click', function() {
+                ThemeManager.toggle();
+                if (!ThemeManager.isDark()) {
+                    ThemeManager.toggle();
+                }
+                ComponentsManager.success('Modo escuro ativado!');
+            });
+
+            // Botão sair
+            document.getElementById('btn-sair').addEventListener('click', function() {
+                ComponentsManager.showConfirmModal({
+                    title: 'Sair da conta?',
+                    message: 'Você será desconectado e precisará fazer login novamente.',
+                    confirmText: 'Sim, sair',
+                    cancelText: 'Não, cancelar',
+                    type: 'warning',
+                    onConfirm: () => {
+                        AuthManager.logout();
+                    }
+                });
+            });
+
+            // Atualiza ícone do tema atual
+            if (ThemeManager.isDark()) {
+                document.getElementById('btn-theme-dark').classList.add('btn-primary');
+                document.getElementById('btn-theme-dark').classList.remove('btn-secondary');
+            } else {
+                document.getElementById('btn-theme-light').classList.add('btn-primary');
+                document.getElementById('btn-theme-light').classList.remove('btn-secondary');
+            }
+        }
+    </script>
+</body>
+</html>

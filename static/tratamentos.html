@@ -1,0 +1,300 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="description" content="Gerenciar tratamentos - DeltaSaúde">
+    <title>Tratamentos - DeltaSaúde</title>
+
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Nunito:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
+
+    <link rel="stylesheet" href="css/design-system.css">
+    <link rel="stylesheet" href="css/components.css">
+    <link rel="stylesheet" href="css/pages.css">
+
+    <script>
+        (function() {
+            const theme = localStorage.getItem('delta_theme');
+            if (theme === 'dark') {
+                document.documentElement.setAttribute('data-theme', 'dark');
+                document.documentElement.classList.add('dark');
+            }
+        })();
+    </script>
+</head>
+<body>
+    <div id="app"></div>
+
+    <script src="js/auth.js"></script>
+    <script src="js/api.js"></script>
+    <script src="js/components.js"></script>
+    <script src="js/theme.js"></script>
+
+    <script>
+        if (!AuthManager.protectPage()) {
+            // Redirecionou
+        } else {
+            const app = document.getElementById('app');
+            ComponentsManager.renderNavbar(app, { showSidebar: true, currentPage: 'tratamentos' });
+
+            const pageContent = document.querySelector('.page-content');
+
+            pageContent.innerHTML = `
+                <div class="page-header">
+                    <div>
+                        <h1 class="page-title">Meus Tratamentos</h1>
+                        <p class="page-subtitle">Acompanhe seus tratamentos medicamentosos</p>
+                    </div>
+                    <div class="page-actions">
+                        <button class="btn btn-primary" id="btn-adicionar">
+                            <i class="fas fa-plus"></i>
+                            Novo tratamento
+                        </button>
+                    </div>
+                </div>
+
+                <div class="grid grid-cols-2" id="tratamentos-list">
+                    <div class="spinner-inline" style="grid-column: 1 / -1; justify-self: center;">
+                        <div class="spinner"></div>
+                        <span>Carregando tratamentos...</span>
+                    </div>
+                </div>
+
+                <!-- Modal Adicionar -->
+                <div id="modal-overlay" class="modal-overlay">
+                    <div class="modal" style="max-width: 560px;">
+                        <div class="modal-header">
+                            <h3 class="modal-title">Novo tratamento</h3>
+                            <button class="modal-close" id="modal-close" aria-label="Fechar">
+                                <i class="fas fa-times"></i>
+                            </button>
+                        </div>
+                        <form id="tratamento-form">
+                            <div class="modal-body">
+                                <div class="form-group">
+                                    <label class="form-label required" for="trat-nome">Nome do tratamento</label>
+                                    <input type="text" id="trat-nome" class="form-input" placeholder="Ex: Tratamento pressão" required>
+                                </div>
+                                <div class="form-group">
+                                    <label class="form-label required" for="trat-data">Data de início</label>
+                                    <input type="date" id="trat-data" class="form-input" required>
+                                </div>
+                                <div class="form-group">
+                                    <label class="form-label required" for="trat-hora">Hora de início</label>
+                                    <input type="time" id="trat-hora" class="form-input" required>
+                                </div>
+                                <div class="form-group">
+                                    <label class="form-label required" for="trat-intervalo">Intervalo (horas)</label>
+                                    <input type="number" id="trat-intervalo" class="form-input" placeholder="Ex: 8" min="1" max="24" required>
+                                </div>
+                                <div class="form-group">
+                                    <label class="form-label required" for="trat-duracao">Duração (dias)</label>
+                                    <input type="number" id="trat-duracao" class="form-input" placeholder="Ex: 7" min="1" required>
+                                </div>
+                                <div class="form-group">
+                                    <label class="form-label required" for="trat-dose">Dose diária</label>
+                                    <input type="number" id="trat-dose" class="form-input" placeholder="Ex: 3" min="1" required>
+                                </div>
+                                <div class="form-group">
+                                    <label class="form-label required" for="trat-medicamento">Medicamento</label>
+                                    <select id="trat-medicamento" class="form-input form-select" required>
+                                        <option value="">Selecione um medicamento</option>
+                                    </select>
+                                </div>
+                            </div>
+                            <div class="modal-footer">
+                                <button type="button" class="btn btn-secondary" id="btn-cancelar">Cancelar</button>
+                                <button type="submit" class="btn btn-primary">Criar tratamento</button>
+                            </div>
+                        </form>
+                    </div>
+                </div>
+            `;
+
+            // Variáveis
+            let tratamentos = [];
+            let medicamentos = [];
+
+            const modal = document.getElementById('modal-overlay');
+            const form = document.getElementById('tratamento-form');
+            const btnAdicionar = document.getElementById('btn-adicionar');
+            const btnCancelar = document.getElementById('btn-cancelar');
+            const btnFechar = document.getElementById('modal-close');
+            const listContainer = document.getElementById('tratamentos-list');
+            const medicamentoSelect = document.getElementById('trat-medicamento');
+
+            // Data padrão = hoje
+            document.getElementById('trat-data').valueAsDate = new Date();
+
+            // Carrega dados
+            loadData();
+
+            async function loadData() {
+                try {
+                    [tratamentos, medicamentos] = await Promise.all([
+                        ApiClient.listarTratamentos(),
+                        ApiClient.listarMedicamentos()
+                    ]);
+
+                    // Popula select de medicamentos
+                    medicamentoSelect.innerHTML = '<option value="">Selecione um medicamento</option>' +
+                        medicamentos.map(m => `<option value="${m.id}">${m.nome} (${m.dosagem}mg)</option>`).join('');
+
+                    renderTratamentos(tratamentos);
+                } catch (error) {
+                    listContainer.innerHTML = `
+                        <div class="empty-state" style="grid-column: 1 / -1;">
+                            <p class="text-danger">Erro ao carregar dados.</p>
+                            <button class="btn btn-primary mt-lg" onclick="loadData()">Tentar novamente</button>
+                        </div>
+                    `;
+                }
+            }
+
+            function renderTratamentos(lista) {
+                if (!lista || lista.length === 0) {
+                    listContainer.innerHTML = `
+                        <div class="empty-state" style="grid-column: 1 / -1;">
+                            <div class="empty-state-icon">
+                                <i class="fas fa-clipboard-list"></i>
+                            </div>
+                            <h3 class="empty-state-title">Nenhum tratamento cadastrado</h3>
+                            <p class="empty-state-description">Crie um tratamento para gerar alarmes automáticos.</p>
+                            <button class="btn btn-primary btn-lg" onclick="abrirModal()">
+                                <i class="fas fa-plus"></i>
+                                Criar tratamento
+                            </button>
+                        </div>
+                    `;
+                    return;
+                }
+
+                listContainer.innerHTML = lista.map(trat => {
+                    const dataInicio = ComponentsManager.formatDate(trat.dataInicio);
+                    const status = 'Em andamento'; // Simplificado
+
+                    return `
+                        <div class="tratamento-card">
+                            <div class="tratamento-header">
+                                <div>
+                                    <h3 class="card-title">${trat.nome}</h3>
+                                    <p class="text-muted" style="font-size: var(--font-sm);">
+                                        Início: ${dataInicio}
+                                    </p>
+                                </div>
+                                <span class="badge badge-primary">${status}</span>
+                            </div>
+                            <div class="tratamento-timeline">
+                                <div class="tratamento-timeline-item">
+                                    <span class="tratamento-timeline-label">Intervalo</span>
+                                    <span class="tratamento-timeline-value">${trat.intervaloHora}h</span>
+                                </div>
+                                <div class="tratamento-timeline-item">
+                                    <span class="tratamento-timeline-label">Duração</span>
+                                    <span class="tratamento-timeline-value">${trat.duracaoDia} dias</span>
+                                </div>
+                                <div class="tratamento-timeline-item">
+                                    <span class="tratamento-timeline-label">Dose/dia</span>
+                                    <span class="tratamento-timeline-value">${trat.doseDiaria}</span>
+                                </div>
+                            </div>
+                            ${trat.nomeMedicamento ? `
+                                <div class="tratamento-medicamentos">
+                                    <span class="medicamento-tag">
+                                        <i class="fas fa-pills"></i>
+                                        ${trat.nomeMedicamento}
+                                    </span>
+                                </div>
+                            ` : ''}
+                            <div class="card-footer">
+                                <a href="alarmes.html?tratamento=${trat.id}" class="btn btn-secondary btn-sm">
+                                    <i class="fas fa-bell"></i>
+                                    Ver alarmes
+                                </a>
+                                <button class="btn btn-danger btn-sm" onclick="excluirTratamento(${trat.id}, '${trat.nome}')">
+                                    <i class="fas fa-trash"></i>
+                                    Remover
+                                </button>
+                            </div>
+                        </div>
+                    `;
+                }).join('');
+            }
+
+            // Abrir modal
+            window.abrirModal = function() {
+                if (medicamentos.length === 0) {
+                    ComponentsManager.warning('Você precisa cadastrar um medicamento primeiro.');
+                    return;
+                }
+                form.reset();
+                document.getElementById('trat-data').valueAsDate = new Date();
+                modal.classList.add('active');
+                document.getElementById('trat-nome').focus();
+            };
+
+            // Fechar modal
+            function fecharModal() {
+                modal.classList.remove('active');
+            }
+
+            btnAdicionar.addEventListener('click', abrirModal);
+            btnCancelar.addEventListener('click', fecharModal);
+            btnFechar.addEventListener('click', fecharModal);
+            modal.addEventListener('click', (e) => {
+                if (e.target === modal) fecharModal();
+            });
+
+            // Excluir tratamento
+            window.excluirTratamento = function(id, nome) {
+                ComponentsManager.showConfirmModal({
+                    title: 'Remover tratamento?',
+                    message: `Tem certeza que deseja remover "${nome}"? Os alarmes também serão removidos.`,
+                    confirmText: 'Sim, remover',
+                    cancelText: 'Não, cancelar',
+                    type: 'danger',
+                    onConfirm: async () => {
+                        try {
+                            await ApiClient.deletarTratamento(id);
+                            ComponentsManager.success('Tratamento removido!');
+                            loadData();
+                        } catch (error) {
+                            ComponentsManager.error('Não foi possível remover o tratamento.');
+                        }
+                    }
+                });
+            };
+
+            // Salvar tratamento
+            form.addEventListener('submit', async function(e) {
+                e.preventDefault();
+
+                const dataInicio = document.getElementById('trat-data').value;
+                const horaInicio = document.getElementById('trat-hora').value;
+
+                const dados = {
+                    nome: document.getElementById('trat-nome').value.trim(),
+                    dataInicio: dataInicio,
+                    horaInicio: horaInicio,
+                    intervaloHora: parseInt(document.getElementById('trat-intervalo').value),
+                    duracaoDia: parseInt(document.getElementById('trat-duracao').value),
+                    doseDiaria: parseInt(document.getElementById('trat-dose').value),
+                    medicamentoId: parseInt(document.getElementById('trat-medicamento').value)
+                };
+
+                try {
+                    await ApiClient.criarTratamento(dados);
+                    ComponentsManager.success('Tratamento criado! Alarmes gerados automaticamente.');
+                    fecharModal();
+                    loadData();
+                } catch (error) {
+                    ComponentsManager.error(error.message || 'Erro ao criar tratamento.');
+                }
+            });
+        }
+    </script>
+</body>
+</html>

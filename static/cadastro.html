@@ -1,0 +1,222 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="description" content="Criar conta - DeltaSaúde">
+    <meta name="theme-color" content="#3B5BDB">
+    <title>Criar Conta - DeltaSaúde</title>
+
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
+
+    <link rel="stylesheet" href="css/design-system.css">
+    <link rel="stylesheet" href="css/components.css">
+    <link rel="stylesheet" href="css/pages.css">
+
+    <script>
+        (function() {
+            const theme = localStorage.getItem('delta_theme');
+            if (theme === 'dark') {
+                document.documentElement.setAttribute('data-theme', 'dark');
+                document.documentElement.classList.add('dark');
+            }
+        })();
+    </script>
+</head>
+<body class="auth-page">
+    <main class="auth-container">
+        <div class="auth-card">
+            <!-- Logo -->
+            <div class="auth-logo">
+                <div class="auth-logo-icon">
+                    <i class="fas fa-heartbeat"></i>
+                </div>
+                <h1 class="auth-title">Criar sua conta</h1>
+                <p class="auth-subtitle">Comece a gerenciar seus medicamentos</p>
+            </div>
+
+            <!-- Mensagem de erro -->
+            <div class="auth-error hidden" id="error-message" role="alert">
+                <i class="fas fa-exclamation-circle"></i>
+                <span id="error-text"></span>
+            </div>
+
+            <!-- Formulário -->
+            <form class="auth-form" id="cadastro-form">
+                <div class="form-group">
+                    <label class="form-label required" for="nome">Seu nome completo</label>
+                    <div class="input-group">
+                        <i class="fas fa-user input-icon"></i>
+                        <input
+                            type="text"
+                            id="nome"
+                            name="nome"
+                            class="form-input"
+                            placeholder="Digite seu nome"
+                            autocomplete="name"
+                            required
+                            minlength="3"
+                        >
+                    </div>
+                </div>
+
+                <div class="form-group">
+                    <label class="form-label required" for="email">Seu e-mail</label>
+                    <div class="input-group">
+                        <i class="fas fa-envelope input-icon"></i>
+                        <input
+                            type="email"
+                            id="email"
+                            name="email"
+                            class="form-input"
+                            placeholder="exemplo@email.com"
+                            autocomplete="email"
+                            required
+                        >
+                    </div>
+                </div>
+
+                <div class="form-group">
+                    <label class="form-label required" for="senha">Criar senha</label>
+                    <div class="input-group">
+                        <i class="fas fa-lock input-icon"></i>
+                        <input
+                            type="password"
+                            id="senha"
+                            name="senha"
+                            class="form-input"
+                            placeholder="Mínimo 6 caracteres"
+                            autocomplete="new-password"
+                            required
+                            minlength="6"
+                        >
+                        <button type="button" class="input-action" id="toggle-password" aria-label="Mostrar senha">
+                            <i class="fas fa-eye"></i>
+                        </button>
+                    </div>
+                </div>
+
+                <div class="form-group">
+                    <label class="form-label required" for="confirmar-senha">Confirmar senha</label>
+                    <div class="input-group">
+                        <i class="fas fa-lock input-icon"></i>
+                        <input
+                            type="password"
+                            id="confirmar-senha"
+                            name="confirmar-senha"
+                            class="form-input"
+                            placeholder="Digite a senha novamente"
+                            autocomplete="new-password"
+                            required
+                            minlength="6"
+                        >
+                    </div>
+                </div>
+
+                <button type="submit" class="btn btn-primary btn-lg btn-block" id="submit-btn">
+                    <i class="fas fa-user-plus"></i>
+                    Criar minha conta
+                </button>
+            </form>
+
+            <!-- Link para login -->
+            <a href="index.html" class="auth-link">
+                Já tem uma conta? <strong>Fazer login</strong>
+            </a>
+        </div>
+    </main>
+
+    <script src="js/auth.js"></script>
+    <script src="js/api.js"></script>
+    <script src="js/components.js"></script>
+    <script src="js/theme.js"></script>
+
+    <script>
+        // Redireciona se já estiver logado
+        AuthManager.redirectIfLoggedIn();
+
+        const form = document.getElementById('cadastro-form');
+        const nomeInput = document.getElementById('nome');
+        const emailInput = document.getElementById('email');
+        const senhaInput = document.getElementById('senha');
+        const confirmarSenhaInput = document.getElementById('confirmar-senha');
+        const submitBtn = document.getElementById('submit-btn');
+        const togglePassword = document.getElementById('toggle-password');
+        const errorMessage = document.getElementById('error-message');
+        const errorText = document.getElementById('error-text');
+
+        // Toggle mostrar/ocultar senha
+        togglePassword.addEventListener('click', function() {
+            const type = senhaInput.type === 'password' ? 'text' : 'password';
+            senhaInput.type = type;
+            confirmarSenhaInput.type = type;
+            togglePassword.querySelector('i').className = type === 'password' ? 'fas fa-eye' : 'fas fa-eye-slash';
+        });
+
+        function showError(message) {
+            errorText.textContent = message;
+            errorMessage.classList.remove('hidden');
+        }
+
+        function hideError() {
+            errorMessage.classList.add('hidden');
+        }
+
+        form.addEventListener('submit', async function(e) {
+            e.preventDefault();
+            hideError();
+
+            const nome = nomeInput.value.trim();
+            const email = emailInput.value.trim();
+            const senha = senhaInput.value;
+            const confirmarSenha = confirmarSenhaInput.value;
+
+            // Validações
+            if (!nome || nome.length < 3) {
+                showError('Por favor, digite seu nome completo.');
+                nomeInput.focus();
+                return;
+            }
+
+            if (!email) {
+                showError('Por favor, digite seu e-mail.');
+                emailInput.focus();
+                return;
+            }
+
+            if (!senha || senha.length < 6) {
+                showError('A senha deve ter pelo menos 6 caracteres.');
+                senhaInput.focus();
+                return;
+            }
+
+            if (senha !== confirmarSenha) {
+                showError('As senhas não coincidem. Digite novamente.');
+                confirmarSenhaInput.focus();
+                return;
+            }
+
+            submitBtn.disabled = true;
+            submitBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Criando conta...';
+
+            try {
+                await ApiClient.cadastrar(nome, email, senha);
+                ComponentsManager.success('Conta criada com sucesso! Faça login para continuar.');
+                setTimeout(() => {
+                    window.location.href = 'index.html';
+                }, 1500);
+            } catch (error) {
+                showError(error.message || 'Não foi possível criar sua conta. Tente novamente.');
+            } finally {
+                submitBtn.disabled = false;
+                submitBtn.innerHTML = '<i class="fas fa-user-plus"></i> Criar minha conta';
+            }
+        });
+
+        nomeInput.focus();
+    </script>
+</body>
+</html>

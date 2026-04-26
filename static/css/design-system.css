@@ -1,0 +1,335 @@
+/* ============================================
+   DELTASAÚDE — DESIGN SYSTEM
+   Identidade: Clínico-orgânico refinado
+   Fonte: Plus Jakarta Sans
+   Paleta: Verde-teal profundo + âmbar quente
+   ============================================ */
+
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&family=Nunito:wght@700;800&display=swap');
+
+:root {
+    --primary:        #06B6D4;   /* ciano principal */
+    --primary-dark:   #0891B2;   /* ciano escuro — hover, active */
+    --primary-darker: #0E7490;   /* ciano muito escuro — texto sobre fundo claro */
+    --primary-light:  #CFFAFE;   /* ciano clarissimo — fundos, badges suaves */
+    --primary-pale:   #ECFEFF;   /* quase branco com tom ciano — bg de seções */
+
+    --secondary:      #10B981;   /* verde saúde — confirmações, status ok */
+    --secondary-light:#D1FAE5;   /* verde claro — badges de sucesso */
+
+    --accent:         #F59E0B;   /* âmbar — alertas, avisos */
+    --accent-light:   #FEF3C7;   /* âmbar claro */
+
+    --danger:         #EF4444;   /* vermelho — erros, defeitos */
+    --danger-light:   #FEE2E2;
+
+    --bg:             #F0FDFE;   /* fundo geral — ciano levíssimo */
+    --surface:        #FFFFFF;   /* cards e modais */
+    --surface-alt:    #ECFEFF;   /* fundo alternativo de seções */
+
+    --text:           #164E63;   /* texto principal — ciano bem escuro */
+    --text-secondary: #0E7490;   /* texto secundário — ciano médio */
+    --text-muted:     #67E8F9;   /* texto desabilitado — ciano claro */
+    --border:         #A5F3FC;   /* bordas — ciano suave */
+    --border-strong:  #06B6D4;   /* bordas em destaque */
+
+    --shadow-card:    0 2px 12px rgba(6, 182, 212, 0.12);
+    --shadow-hover:   0 6px 24px rgba(6, 182, 212, 0.22);
+    --radius-card:    16px;
+    --radius-btn:     12px;
+    --radius-pill:    999px;
+
+    /* Aliases e outras variáveis */
+    --font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+    --font-family-heading: 'Nunito', -apple-system, BlinkMacSystemFont, sans-serif;
+    
+    --bg-page: var(--bg);
+    --bg-surface: var(--surface);
+    --text-strong: var(--text);
+    --text-body: var(--text-secondary);
+    --text-soft: var(--text-muted);
+    --border-subtle: var(--border);
+    --border-default: var(--border-strong);
+    
+    --color-primary: var(--primary);
+    --color-primary-light: var(--primary-light);
+    --color-primary-dark: var(--primary-dark);
+    --color-accent: var(--accent);
+    --color-danger: var(--danger);
+    --color-success: var(--secondary);
+    --color-info: var(--primary-dark);
+
+    --font-xs:  12px;
+    --font-sm:  13px;
+    --font-md:  15px;
+    --font-lg:  17px;
+    --font-xl:  20px;
+    --font-2xl: 24px;
+    --font-3xl: 30px;
+    --font-4xl: 38px;
+
+    --space-1:  4px;
+    --space-2:  8px;
+    --space-3:  12px;
+    --space-4:  16px;
+    --space-5:  20px;
+    --space-6:  24px;
+    --space-8:  32px;
+    --space-10: 40px;
+    --space-12: 48px;
+    --space-16: 64px;
+
+    --transition-fast:   120ms cubic-bezier(0.16, 1, 0.3, 1);
+    --transition-normal: 220ms cubic-bezier(0.16, 1, 0.3, 1);
+    --transition-slow:   380ms cubic-bezier(0.16, 1, 0.3, 1);
+
+    /* Raios */
+    --radius-xs: 4px;
+    --radius-sm: 8px;
+    --radius-md: 10px;
+    --radius-lg: 14px;
+    --radius-xl: 20px;
+    --radius-2xl: 28px;
+    --radius-full: 9999px;
+
+    /* Sombras Antigas */
+    --shadow-xs: 0 1px 2px rgba(6,182,212,.05);
+    --shadow-sm: 0 1px 3px rgba(6,182,212,.07), 0 1px 2px rgba(6,182,212,.04);
+    --shadow-md: 0 3px 8px rgba(6,182,212,.08), 0 1px 3px rgba(6,182,212,.05);
+    --shadow-lg: 0 8px 24px rgba(6,182,212,.10), 0 2px 6px rgba(6,182,212,.06);
+    --shadow-xl: 0 20px 48px rgba(6,182,212,.12), 0 4px 12px rgba(6,182,212,.08);
+
+    /* Z-index */
+    --z-dropdown: 100;
+    --z-sticky:   200;
+    --z-modal:    300;
+    --z-toast:    400;
+    --z-loading:  500;
+}
+
+/* ============================================
+   DARK MODE — CIANO PALETTE
+   ============================================ */
+[data-theme="dark"], .dark {
+    --bg-page:    #0a1a1f;
+    --bg-surface: #0f2025;
+    --bg-raised:  #142830;
+    --bg-subtle:  #1a3340;
+    --bg-brand:   rgba(6,182,212,.12);
+
+    --text-strong: #ecfeff;
+    --text-body:   #a5f3fc;
+    --text-soft:   #67e8f9;
+    --text-muted:  #22d3ee;
+
+    --border-subtle:  rgba(6,182,212,.12);
+    --border-default: rgba(6,182,212,.20);
+    --border-strong:  rgba(6,182,212,.35);
+    --border-brand:   rgba(6,182,212,.30);
+
+    --bg-primary:   var(--bg-page);
+    --bg-secondary: var(--bg-subtle);
+    --bg-tertiary:  var(--bg-surface);
+    --text-primary:   var(--text-strong);
+    --text-secondary: var(--text-body);
+    --border:         var(--border-subtle);
+
+    --shadow-xs: 0 1px 2px rgba(0,0,0,.35);
+    --shadow-sm: 0 1px 3px rgba(0,0,0,.45), 0 1px 2px rgba(0,0,0,.25);
+    --shadow-md: 0 3px 8px rgba(0,0,0,.50), 0 1px 3px rgba(0,0,0,.30);
+    --shadow-lg: 0 8px 24px rgba(0,0,0,.60), 0 2px 6px rgba(0,0,0,.35);
+    --shadow-xl: 0 20px 48px rgba(0,0,0,.70), 0 4px 12px rgba(0,0,0,.40);
+    --shadow-brand: 0 4px 16px rgba(6,182,212,.25);
+}
+
+/* ============================================
+   RESET
+   ============================================ */
+*, *::before, *::after {
+    box-sizing: border-box;
+    margin: 0;
+    padding: 0;
+}
+
+html {
+    font-size: 16px;
+    scroll-behavior: smooth;
+    -webkit-text-size-adjust: 100%;
+}
+
+body {
+    font-family: var(--font-family);
+    font-size: var(--font-md);
+    font-weight: 400;
+    line-height: 1.65;
+    color: var(--text-body);
+    background-color: var(--bg-page);
+    min-height: 100vh;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+    transition: background-color var(--transition-normal), color var(--transition-normal);
+}
+
+:focus-visible {
+    outline: 2px solid var(--color-primary);
+    outline-offset: 3px;
+    border-radius: var(--radius-xs);
+}
+
+:focus:not(:focus-visible) { outline: none; }
+
+/* ============================================
+   TIPOGRAFIA
+   ============================================ */
+h1, h2, h3, h4, h5, h6 {
+    font-family: var(--font-family-heading);
+    font-weight: 700;
+    line-height: 1.25;
+    color: var(--text-strong);
+    letter-spacing: -0.025em;
+}
+
+h1 { font-size: var(--font-4xl); font-weight: 800; }
+h2 { font-size: var(--font-3xl); }
+h3 { font-size: var(--font-2xl); }
+h4 { font-size: var(--font-xl); }
+h5 { font-size: var(--font-lg); }
+h6 { font-size: var(--font-md); font-weight: 600; }
+
+p {
+    font-size: var(--font-md);
+    line-height: 1.7;
+    color: var(--text-body);
+}
+
+strong, b { font-weight: 600; color: var(--text-strong); }
+small { font-size: var(--font-sm); }
+
+a {
+    color: var(--color-primary);
+    text-decoration: none;
+    font-weight: 500;
+    transition: color var(--transition-fast);
+}
+a:hover { color: var(--color-primary-light); }
+
+ul, ol { list-style: none; }
+img { max-width: 100%; height: auto; display: block; }
+
+/* ============================================
+   SCROLLBAR
+   ============================================ */
+::-webkit-scrollbar { width: 6px; height: 6px; }
+::-webkit-scrollbar-track { background: transparent; }
+::-webkit-scrollbar-thumb { background: var(--stone-300); border-radius: var(--radius-full); }
+::-webkit-scrollbar-thumb:hover { background: var(--stone-400); }
+* { scrollbar-width: thin; scrollbar-color: var(--stone-300) transparent; }
+::selection { background: var(--brand-200); color: var(--brand-900); }
+
+/* ============================================
+   LAYOUT
+   ============================================ */
+.container {
+    width: 100%;
+    max-width: 1280px;
+    margin: 0 auto;
+    padding: 0 var(--space-8);
+}
+
+.page-wrapper { min-height: 100vh; display: flex; flex-direction: column; }
+
+.main-content { flex: 1; padding: var(--space-10) 0; }
+
+.grid { display: grid; gap: var(--space-6); }
+.grid-cols-1 { grid-template-columns: 1fr; }
+.grid-cols-2 { grid-template-columns: repeat(2, minmax(0,1fr)); }
+.grid-cols-3 { grid-template-columns: repeat(3, minmax(0,1fr)); }
+.grid-cols-4 { grid-template-columns: repeat(4, minmax(0,1fr)); }
+
+@media (max-width: 1024px) {
+    .grid-cols-4 { grid-template-columns: repeat(2, minmax(0,1fr)); }
+    .grid-cols-3 { grid-template-columns: repeat(2, minmax(0,1fr)); }
+}
+@media (max-width: 640px) {
+    .grid-cols-4, .grid-cols-3, .grid-cols-2 { grid-template-columns: 1fr; }
+    .container { padding: 0 var(--space-4); }
+}
+
+/* Flex */
+.flex { display: flex; }
+.flex-col { flex-direction: column; }
+.flex-wrap { flex-wrap: wrap; }
+.items-center { align-items: center; }
+.items-start { align-items: flex-start; }
+.justify-center { justify-content: center; }
+.justify-between { justify-content: space-between; }
+.justify-end { justify-content: flex-end; }
+.gap-1 { gap: var(--space-1); }
+.gap-2 { gap: var(--space-2); }
+.gap-3 { gap: var(--space-3); }
+.gap-4 { gap: var(--space-4); }
+.gap-6 { gap: var(--space-6); }
+.gap-8 { gap: var(--space-8); }
+
+/* Spacing */
+.mt-1 { margin-top: var(--space-1); } .mt-2 { margin-top: var(--space-2); }
+.mt-3 { margin-top: var(--space-3); } .mt-4 { margin-top: var(--space-4); }
+.mt-6 { margin-top: var(--space-6); } .mt-8 { margin-top: var(--space-8); }
+.mb-1 { margin-bottom: var(--space-1); } .mb-2 { margin-bottom: var(--space-2); }
+.mb-3 { margin-bottom: var(--space-3); } .mb-4 { margin-bottom: var(--space-4); }
+.mb-6 { margin-bottom: var(--space-6); } .mb-8 { margin-bottom: var(--space-8); }
+.mt-md { margin-top: var(--space-4); }
+.mb-lg { margin-bottom: var(--space-6); }
+.p-4 { padding: var(--space-4); } .p-6 { padding: var(--space-6); }
+.p-8 { padding: var(--space-8); }
+
+/* Text utils */
+.text-center { text-align: center; }
+.text-right { text-align: right; }
+.text-primary { color: var(--text-strong); }
+.text-secondary { color: var(--text-body); }
+.text-muted { color: var(--text-soft); }
+.text-success { color: var(--color-success); }
+.text-danger { color: var(--color-danger); }
+.text-accent { color: var(--color-accent); }
+.font-bold { font-weight: 700; }
+.font-semibold { font-weight: 600; }
+.font-medium { font-weight: 500; }
+.hidden { display: none !important; }
+.sr-only { position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px; overflow: hidden; clip: rect(0,0,0,0); white-space: nowrap; border: 0; }
+
+/* ============================================
+   ANIMAÇÕES
+   ============================================ */
+@keyframes fadeIn   { from { opacity: 0; } to { opacity: 1; } }
+@keyframes slideUp  { from { opacity: 0; transform: translateY(12px); } to { opacity: 1; transform: translateY(0); } }
+@keyframes slideDown{ from { opacity: 0; transform: translateY(-12px); } to { opacity: 1; transform: translateY(0); } }
+@keyframes pulse    { 0%,100% { opacity: 1; } 50% { opacity: .45; } }
+@keyframes spin     { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }
+@keyframes shimmer  { 0% { background-position: -200% 0; } 100% { background-position: 200% 0; } }
+
+.animate-fade-in  { animation: fadeIn  var(--transition-normal) var(--ease-out) both; }
+.animate-slide-up { animation: slideUp var(--transition-normal) var(--ease-out) both; }
+.animate-pulse    { animation: pulse 2s infinite; }
+.animate-spin     { animation: spin 1s linear infinite; }
+
+/* ============================================
+   RESPONSIVO
+   ============================================ */
+@media (max-width: 768px) {
+    :root {
+        --font-4xl: 30px;
+        --font-3xl: 24px;
+        --font-2xl: 20px;
+        --font-xl: 18px;
+    }
+    .main-content { padding: var(--space-6) 0; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+    *, *::before, *::after {
+        animation-duration: 0.01ms !important;
+        animation-iteration-count: 1 !important;
+        transition-duration: 0.01ms !important;
+    }
+}

@@ -1,0 +1,292 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="description" content="Gerenciar medicamentos - DeltaSaúde">
+    <title>Medicamentos - DeltaSaúde</title>
+
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Nunito:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
+
+    <link rel="stylesheet" href="css/design-system.css">
+    <link rel="stylesheet" href="css/components.css">
+    <link rel="stylesheet" href="css/pages.css">
+
+    <script>
+        (function() {
+            const theme = localStorage.getItem('delta_theme');
+            if (theme === 'dark') {
+                document.documentElement.setAttribute('data-theme', 'dark');
+                document.documentElement.classList.add('dark');
+            }
+        })();
+    </script>
+</head>
+<body>
+    <div id="app"></div>
+
+    <script src="js/auth.js"></script>
+    <script src="js/api.js"></script>
+    <script src="js/components.js"></script>
+    <script src="js/theme.js"></script>
+
+    <script>
+        if (!AuthManager.protectPage()) {
+            // Redirecionou
+        } else {
+            const app = document.getElementById('app');
+            ComponentsManager.renderNavbar(app, { showSidebar: true, currentPage: 'medicamentos' });
+
+            const pageContent = document.querySelector('.page-content');
+
+            pageContent.innerHTML = `
+                <div class="page-header">
+                    <div>
+                        <h1 class="page-title">Meus Medicamentos</h1>
+                        <p class="page-subtitle">Gerencie seus remédios e controle de estoque</p>
+                    </div>
+                    <div class="page-actions">
+                        <button class="btn btn-primary" id="btn-adicionar">
+                            <i class="fas fa-plus"></i>
+                            Adicionar medicamento
+                        </button>
+                    </div>
+                </div>
+
+                <div class="search-bar mb-lg" id="search-container" style="display: none;">
+                    <i class="fas fa-search"></i>
+                    <input type="text" class="form-input" id="search-input" placeholder="Buscar medicamento...">
+                </div>
+
+                <div class="grid grid-cols-3" id="medicamentos-list">
+                    <div class="spinner-inline" style="grid-column: 1 / -1; justify-self: center;">
+                        <div class="spinner"></div>
+                        <span>Carregando medicamentos...</span>
+                    </div>
+                </div>
+
+                <!-- Modal Adicionar/Editar -->
+                <div id="modal-overlay" class="modal-overlay">
+                    <div class="modal">
+                        <div class="modal-header">
+                            <h3 class="modal-title" id="modal-title">Adicionar medicamento</h3>
+                            <button class="modal-close" id="modal-close" aria-label="Fechar">
+                                <i class="fas fa-times"></i>
+                            </button>
+                        </div>
+                        <form id="medicamento-form">
+                            <div class="modal-body">
+                                <div class="form-group">
+                                    <label class="form-label required" for="med-nome">Nome do medicamento</label>
+                                    <input type="text" id="med-nome" class="form-input" placeholder="Ex: Dipirona" required>
+                                </div>
+                                <div class="form-group">
+                                    <label class="form-label required" for="med-dosagem">Dosagem (mg)</label>
+                                    <input type="number" id="med-dosagem" class="form-input" placeholder="Ex: 500" min="1" required>
+                                </div>
+                                <div class="form-group">
+                                    <label class="form-label required" for="med-atual">Quantidade atual</label>
+                                    <input type="number" id="med-atual" class="form-input" placeholder="Ex: 20" min="0" required>
+                                </div>
+                                <div class="form-group">
+                                    <label class="form-label required" for="med-critico">Estoque mínimo (alerta)</label>
+                                    <input type="number" id="med-critico" class="form-input" placeholder="Ex: 5" min="0" required>
+                                </div>
+                            </div>
+                            <div class="modal-footer">
+                                <button type="button" class="btn btn-secondary" id="btn-cancelar">Cancelar</button>
+                                <button type="submit" class="btn btn-primary" id="btn-salvar">Salvar</button>
+                            </div>
+                        </form>
+                    </div>
+                </div>
+            `;
+
+            // Variáveis
+            let medicamentos = [];
+            let editandoId = null;
+
+            const modal = document.getElementById('modal-overlay');
+            const modalTitle = document.getElementById('modal-title');
+            const form = document.getElementById('medicamento-form');
+            const btnAdicionar = document.getElementById('btn-adicionar');
+            const btnCancelar = document.getElementById('btn-cancelar');
+            const btnFechar = document.getElementById('modal-close');
+            const listContainer = document.getElementById('medicamentos-list');
+
+            // Carrega medicamentos
+            loadMedicamentos();
+
+            async function loadMedicamentos() {
+                try {
+                    medicamentos = await ApiClient.listarMedicamentos();
+                    renderMedicamentos(medicamentos);
+                    if (medicamentos.length > 3) {
+                        document.getElementById('search-container').style.display = 'block';
+                    }
+                } catch (error) {
+                    listContainer.innerHTML = `
+                        <div class="empty-state" style="grid-column: 1 / -1;">
+                            <p class="text-danger">Erro ao carregar medicamentos.</p>
+                            <button class="btn btn-primary mt-lg" onclick="loadMedicamentos()">Tentar novamente</button>
+                        </div>
+                    `;
+                }
+            }
+
+            function renderMedicamentos(lista) {
+                if (!lista || lista.length === 0) {
+                    listContainer.innerHTML = `
+                        <div class="empty-state" style="grid-column: 1 / -1;">
+                            <div class="empty-state-icon">
+                                <i class="fas fa-pills"></i>
+                            </div>
+                            <h3 class="empty-state-title">Nenhum medicamento cadastrado</h3>
+                            <p class="empty-state-description">Adicione seus remédios para controlar o estoque.</p>
+                            <button class="btn btn-primary btn-lg" onclick="abrirModal()">
+                                <i class="fas fa-plus"></i>
+                                Adicionar medicamento
+                            </button>
+                        </div>
+                    `;
+                    return;
+                }
+
+                listContainer.innerHTML = lista.map(med => {
+                    const percentual = Math.min(100, (med.atual / (med.critico * 2)) * 100);
+                    const statusClass = med.atual <= med.critico ? 'danger' : (med.atual <= med.critico * 1.5 ? 'accent' : 'success');
+                    const statusText = med.atual <= med.critico ? 'Crítico' : (med.atual <= med.critico * 1.5 ? 'Baixo' : 'OK');
+
+                    return `
+                        <div class="medicamento-card">
+                            <div class="medicamento-header">
+                                <div>
+                                    <h3 class="medicamento-nome">${med.nome}</h3>
+                                    <p class="medicamento-dosagem">${med.dosagem} mg</p>
+                                </div>
+                                <span class="badge badge-${statusClass === 'success' ? 'success' : (statusClass === 'danger' ? 'danger' : 'accent')}">${statusText}</span>
+                            </div>
+                            <div class="medicamento-estoque">
+                                <div class="estoque-label">
+                                    <span>Estoque atual</span>
+                                    <span class="estoque-value ${statusClass}">${med.atual} unidades</span>
+                                </div>
+                                <div class="progress">
+                                    <div class="progress-bar ${statusClass}" style="width: ${percentual}%"></div>
+                                </div>
+                                <div class="estoque-label" style="margin-top: 8px;">
+                                    <span class="text-muted">Mínimo: ${med.critico}</span>
+                                </div>
+                            </div>
+                            <div class="medicamento-actions">
+                                <button class="btn btn-secondary btn-sm" onclick="editarMedicamento(${med.id})">
+                                    <i class="fas fa-edit"></i>
+                                    Editar
+                                </button>
+                                <button class="btn btn-danger btn-sm" onclick="excluirMedicamento(${med.id}, '${med.nome}')">
+                                    <i class="fas fa-trash"></i>
+                                    Remover
+                                </button>
+                            </div>
+                        </div>
+                    `;
+                }).join('');
+            }
+
+            // Abrir modal
+            window.abrirModal = function() {
+                editandoId = null;
+                modalTitle.textContent = 'Adicionar medicamento';
+                form.reset();
+                modal.classList.add('active');
+                document.getElementById('med-nome').focus();
+            };
+
+            // Fechar modal
+            function fecharModal() {
+                modal.classList.remove('active');
+                editandoId = null;
+            }
+
+            btnAdicionar.addEventListener('click', abrirModal);
+            btnCancelar.addEventListener('click', fecharModal);
+            btnFechar.addEventListener('click', fecharModal);
+            modal.addEventListener('click', (e) => {
+                if (e.target === modal) fecharModal();
+            });
+
+            // Editar medicamento
+            window.editarMedicamento = async function(id) {
+                try {
+                    const med = await ApiClient.buscarMedicamento(id);
+                    editandoId = id;
+                    modalTitle.textContent = 'Editar medicamento';
+                    document.getElementById('med-nome').value = med.nome;
+                    document.getElementById('med-dosagem').value = med.dosagem;
+                    document.getElementById('med-atual').value = med.atual;
+                    document.getElementById('med-critico').value = med.critico;
+                    modal.classList.add('active');
+                } catch (error) {
+                    ComponentsManager.error('Não foi possível carregar os dados do medicamento.');
+                }
+            };
+
+            // Excluir medicamento
+            window.excluirMedicamento = function(id, nome) {
+                ComponentsManager.showConfirmModal({
+                    title: 'Remover medicamento?',
+                    message: `Tem certeza que deseja remover "${nome}"? Esta ação não pode ser desfeita.`,
+                    confirmText: 'Sim, remover',
+                    cancelText: 'Não, cancelar',
+                    type: 'danger',
+                    onConfirm: async () => {
+                        try {
+                            await ApiClient.deletarMedicamento(id);
+                            ComponentsManager.success('Medicamento removido com sucesso!');
+                            loadMedicamentos();
+                        } catch (error) {
+                            ComponentsManager.error('Não foi possível remover o medicamento.');
+                        }
+                    }
+                });
+            };
+
+            // Salvar medicamento
+            form.addEventListener('submit', async function(e) {
+                e.preventDefault();
+
+                const dados = {
+                    nome: document.getElementById('med-nome').value.trim(),
+                    dosagem: parseInt(document.getElementById('med-dosagem').value),
+                    atual: parseInt(document.getElementById('med-atual').value),
+                    critico: parseInt(document.getElementById('med-critico').value)
+                };
+
+                try {
+                    if (editandoId) {
+                        await ApiClient.atualizarMedicamento(editandoId, dados);
+                        ComponentsManager.success('Medicamento atualizado!');
+                    } else {
+                        await ApiClient.criarMedicamento(dados);
+                        ComponentsManager.success('Medicamento adicionado!');
+                    }
+                    fecharModal();
+                    loadMedicamentos();
+                } catch (error) {
+                    ComponentsManager.error(error.message || 'Erro ao salvar medicamento.');
+                }
+            });
+
+            // Busca
+            document.getElementById('search-input').addEventListener('input', function(e) {
+                const termo = e.target.value.toLowerCase();
+                const filtrados = medicamentos.filter(m => m.nome.toLowerCase().includes(termo));
+                renderMedicamentos(filtrados);
+            });
+        }
+    </script>
+</body>
+</html>

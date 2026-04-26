@@ -1,0 +1,190 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="description" content="DeltaSaúde - Sistema de gerenciamento de medicamentos e tratamentos">
+    <meta name="theme-color" content="#3B5BDB">
+    <title>Entrar - DeltaSaúde</title>
+
+    <!-- Preconnect -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+
+    <!-- Fonts -->
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
+
+    <!-- Styles -->
+    <link rel="stylesheet" href="css/design-system.css">
+    <link rel="stylesheet" href="css/components.css">
+    <link rel="stylesheet" href="css/pages.css">
+
+    <!-- Apply theme before render -->
+    <script>
+        (function() {
+            const theme = localStorage.getItem('delta_theme');
+            if (theme === 'dark') {
+                document.documentElement.setAttribute('data-theme', 'dark');
+                document.documentElement.classList.add('dark');
+            }
+        })();
+    </script>
+</head>
+<body class="auth-page">
+    <main class="auth-container">
+        <div class="auth-card">
+            <!-- Logo -->
+            <div class="auth-logo">
+                <div class="auth-logo-icon">
+                    <i class="fas fa-heartbeat"></i>
+                </div>
+                <h1 class="auth-title">Bem-vindo ao DeltaSaúde</h1>
+                <p class="auth-subtitle">Faça login para continuar</p>
+            </div>
+
+            <!-- Error Message -->
+            <div class="auth-error hidden" id="error-message" role="alert">
+                <i class="fas fa-exclamation-circle"></i>
+                <span id="error-text"></span>
+            </div>
+
+            <!-- Form -->
+            <form class="auth-form" id="login-form" autocomplete="on">
+                <div class="form-group">
+                    <label class="form-label required" for="email">Seu e-mail</label>
+                    <div class="input-group">
+                        <i class="fas fa-envelope input-icon"></i>
+                        <input
+                            type="email"
+                            id="email"
+                            name="email"
+                            class="form-input"
+                            placeholder="exemplo@email.com"
+                            autocomplete="email"
+                            required
+                            aria-describedby="email-error"
+                        >
+                    </div>
+                    <span class="form-error hidden" id="email-error"></span>
+                </div>
+
+                <div class="form-group">
+                    <label class="form-label required" for="senha">Sua senha</label>
+                    <div class="input-group">
+                        <i class="fas fa-lock input-icon"></i>
+                        <input
+                            type="password"
+                            id="senha"
+                            name="senha"
+                            class="form-input"
+                            placeholder="Digite sua senha"
+                            autocomplete="current-password"
+                            required
+                            aria-describedby="senha-error"
+                        >
+                        <button
+                            type="button"
+                            class="input-action"
+                            id="toggle-password"
+                            aria-label="Mostrar senha"
+                        >
+                            <i class="fas fa-eye"></i>
+                        </button>
+                    </div>
+                    <span class="form-error hidden" id="senha-error"></span>
+                </div>
+
+                <button type="submit" class="btn btn-primary btn-lg btn-block" id="submit-btn">
+                    <i class="fas fa-sign-in-alt"></i>
+                    Entrar
+                </button>
+            </form>
+
+            <!-- Link -->
+            <a href="cadastro.html" class="auth-link">
+                Ainda não tem conta? <strong>Criar minha conta</strong>
+            </a>
+        </div>
+    </main>
+
+    <!-- Scripts -->
+    <script src="js/auth.js"></script>
+    <script src="js/api.js"></script>
+    <script src="js/components.js"></script>
+    <script src="js/theme.js"></script>
+
+    <script>
+        if (AuthManager.redirectIfLoggedIn()) {
+            // Already redirected
+        } else {
+            const form = document.getElementById('login-form');
+            const emailInput = document.getElementById('email');
+            const senhaInput = document.getElementById('senha');
+            const submitBtn = document.getElementById('submit-btn');
+            const togglePassword = document.getElementById('toggle-password');
+            const errorMessage = document.getElementById('error-message');
+            const errorText = document.getElementById('error-text');
+
+            togglePassword.addEventListener('click', function() {
+                const type = senhaInput.type === 'password' ? 'text' : 'password';
+                senhaInput.type = type;
+                togglePassword.querySelector('i').className = type === 'password' ? 'fas fa-eye' : 'fas fa-eye-slash';
+                togglePassword.setAttribute('aria-label', type === 'password' ? 'Mostrar senha' : 'Ocultar senha');
+            });
+
+            function showError(message) {
+                errorText.textContent = message;
+                errorMessage.classList.remove('hidden');
+            }
+
+            function hideError() {
+                errorMessage.classList.add('hidden');
+            }
+
+            emailInput.addEventListener('input', hideError);
+            senhaInput.addEventListener('input', hideError);
+
+            form.addEventListener('submit', async function(e) {
+                e.preventDefault();
+                hideError();
+
+                const email = emailInput.value.trim();
+                const senha = senhaInput.value;
+
+                if (!email) {
+                    showError('Por favor, digite seu e-mail.');
+                    emailInput.focus();
+                    return;
+                }
+
+                if (!senha) {
+                    showError('Por favor, digite sua senha.');
+                    senhaInput.focus();
+                    return;
+                }
+
+                submitBtn.disabled = true;
+                submitBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Entrando...';
+
+                try {
+                    await ApiClient.login(email, senha);
+                    ComponentsManager.success('Login realizado com sucesso!');
+                    setTimeout(() => {
+                        window.location.href = 'dashboard.html';
+                    }, 500);
+                } catch (error) {
+                    showError(error.message || 'E-mail ou senha incorretos. Tente novamente.');
+                    senhaInput.value = '';
+                    senhaInput.focus();
+                } finally {
+                    submitBtn.disabled = false;
+                    submitBtn.innerHTML = '<i class="fas fa-sign-in-alt"></i> Entrar';
+                }
+            });
+
+            emailInput.focus();
+        }
+    </script>
+</body>
+</html>
